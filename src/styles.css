@@ -21,3 +21,28 @@
 .group-settings-help{display:flex;gap:7px;align-items:flex-start;color:#828aa2;font-size:11px;line-height:1.5}
 .group-settings-help svg{flex-shrink:0;color:#7668ca}
 @media(max-width:700px){.thread-header{gap:8px}.manage-group-btn{padding:8px;min-width:34px}.manage-group-btn span{display:none}.group-settings-section{gap:7px}}
+
+/* Semester-first My Modules (dashboard recent cards deliberately unchanged). */
+.semester-intro{display:flex;align-items:center;gap:16px;border:1px solid #e9e7fb;background:linear-gradient(105deg,#f7f6ff,#f0f5ff);border-radius:15px;padding:18px 21px;margin-bottom:24px}
+.semester-intro-icon{height:48px;width:48px;border-radius:13px;display:grid;place-items:center;color:#5d55cc;background:#e9e5ff;flex-shrink:0}
+.semester-intro>div:nth-child(2){flex:1}.semester-intro b{font-size:13px;color:#35365d}.semester-intro p{font-size:11px;color:#8387a7;line-height:1.65;margin-top:5px}
+.semester-intro-total{font-size:11px;font-weight:800;color:#5d56c9;background:white;padding:9px 12px;border-radius:9px;white-space:nowrap}
+.semester-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:17px}
+.semester-card{display:flex;flex-direction:column;align-items:stretch;gap:7px;text-align:left;min-width:0;min-height:200px;border:1px solid #e7e8f6;border-radius:17px;padding:20px;background:white;transition:border-color .18s,transform .18s,box-shadow .18s;overflow:hidden;position:relative}
+.semester-card:hover,.semester-card:focus-visible{border-color:#a6a0f7;transform:translateY(-3px);box-shadow:0 13px 28px #4640b414;outline:none}
+.semester-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.semester-year{font-size:10px;color:#9295ae;letter-spacing:1.2px;font-weight:800}
+.semester-card-icon{height:39px;width:39px;display:grid;place-items:center;background:#f0edff;border-radius:11px;color:#675cdb}
+.semester-card-number{font:800 38px Manrope,'DM Sans',sans-serif;letter-spacing:-1.8px;line-height:1.15;color:#635bd7}
+.semester-card strong{font:800 15px Manrope,'DM Sans',sans-serif;color:#303551}
+.semester-card-bottom{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:#9196ab;font-weight:700}
+.semester-card-arrow{height:28px;width:28px;display:grid;place-items:center;color:#756be1;border:1px solid #e8e5ff;border-radius:50%}
+.semester-card-unassigned{background:#fffaf6;border-color:#f2e5da}.semester-card-unassigned .semester-card-icon{background:#fff0db;color:#c38748}.semester-card-unassigned .semester-card-number{color:#cf9861}
+.semester-edit-btn{display:inline-flex;align-items:center;gap:7px;color:#635bd1;font-size:11px;font-weight:800;background:#f2f0ff;border:1px solid #e6e2ff;border-radius:8px;padding:8px 11px;margin-top:12px}
+.semester-edit-btn:hover{background:#e7e4ff}
+.modal-form select{width:100%;border:1px solid #e4e7f0;border-radius:9px;background:white;padding:12px 13px;color:#333953;font-size:12px;min-width:0;cursor:pointer}
+.modal-form select:focus{border-color:#8e86e8;outline:3px solid #8d84e512}
+.semester-modal-hint{color:#8b8da3;font-size:11px;line-height:1.65}
+@media(max-width:1100px){.semester-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.semester-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.semester-intro-total{display:none}}
+@media(max-width:460px){.semester-grid{gap:11px}.semester-card{min-height:170px;padding:14px}.semester-card-number{font-size:30px}.semester-card strong{font-size:12px}.semester-intro{padding:14px;gap:10px}.semester-intro p{font-size:10px}}
