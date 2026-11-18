@@ -115,7 +115,7 @@ function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeCha
   return <div className="app-shell">
     {menuOpen&&<button className="mobile-overlay" onClick={()=>setMenuOpen(false)} aria-label="Close navigation"/>}
     <aside className={`sidebar ${menuOpen?'sidebar-open':''}`}>
-      <button className="sidebar-logo" onClick={()=>go('dashboard')}><Logomark/><span>Mora-BPM<span className="period">.</span><small>STUDENT WORKSPACE</small></span></button>
+      <button className="sidebar-logo" onClick={()=>go('dashboard')}><Logomark/><span>campusflow<span className="period">.</span><small>STUDENT WORKSPACE</small></span></button>
       <div className="nav-heading">WORKSPACE</div><nav className="main-nav">{navItems.map(n=><button key={n.id} className={`nav-link ${page===n.id?'nav-active':''}`} onClick={()=>go(n.id)}><n.icon size={19} strokeWidth={1.9}/><span>{n.label}</span>{n.id==='messages'&&<i className="nav-count">{chats.length}</i>}</button>)}</nav>
       <div className="sidebar-divider"/><div className="nav-heading">MY LEARNING</div><div className="sidebar-module-list">{modules.slice(0,4).map(m=><button key={m.id} className="sidebar-module" onClick={()=>{go('modules');setSelectedModule(m.id);}}><span className={`mini-mark mark-${m.color||'violet'}`}>{m.title.charAt(0)}</span><span>{m.title}</span></button>)}{!modules.length&&<p className="side-hint">Your modules will appear here</p>}</div>
       <div className="sidebar-spacer"/><div className="sidebar-help"><span className="help-star"><Sparkles size={18}/></span><b>Study smarter</b><p>Turn notes into summaries and quiz questions with AI.</p><button onClick={()=>{go('modules');}}>Explore resources <ArrowRight size={15}/></button></div>
