@@ -86,3 +86,45 @@
   color: #85859b;
   opacity: 0.85;
 }
+
+
+/* Clickable message */
+
+.bubble[role="button"] {
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.bubble[role="button"]:hover {
+  filter: brightness(0.97);
+}
+
+.bubble[role="button"]:focus-visible {
+  outline: 2px solid #6154e8;
+  outline-offset: 3px;
+}
+
+/* Delete option shown after selecting a message */
+
+.message-delete-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 7px 12px;
+
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+
+  background: #fff1f2;
+  color: #dc2626;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.message-delete-option:hover {
+  background: #ffe4e6;
+}

@@ -174,7 +174,7 @@ async function ai(req,env,student){
   const parts=[{text:`You are a careful learning assistant. Use ONLY the attached resource titled "${resource.title}". ${instructions[mode]} If the resource is unreadable, say so explicitly.`}];
   if(resource.mime_type.startsWith('text/')) parts.push({text:new TextDecoder().decode(buffer)});
   else parts.push({inline_data:{mime_type:resource.mime_type,data:b64array(buffer)}});
-  const model=env.GEMINI_MODEL||'gemini-2.5-flash-lite';
+  const model=env.GEMINI_MODEL||'gemini-3.6-flash';
   const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
     method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
     body:JSON.stringify({contents:[{role:'user',parts}],generationConfig:{maxOutputTokens:1800,temperature:0.35}})
@@ -185,13 +185,166 @@ async function ai(req,env,student){
   if(!answer) return fail('AI returned an empty response; try again',502);
   return resp({result:answer});
 }
+
+async function requireAdmin(env, student) {
+  const rows = await query(
+    env,
+    student.token,
+    'profiles',
+    'id=eq.' + encodeURIComponent(student.id) +
+      '&select=id,role&limit=1',
+    true
+  );
+
+  return rows[0]?.role === 'admin';
+}
+
+async function deleteLearningResource(env, student, resourceId) {
+  if (!validUuid(resourceId)) {
+    return fail('Invalid resource identifier');
+  }
+
+  const rows = await query(
+    env,
+    student.token,
+    'resources',
+    'id=eq.' + encodeURIComponent(resourceId) +
+      '&select=id,file_id,uploader_id,title&limit=1',
+    true
+  );
+
+  const resource = rows[0];
+
+  if (!resource) {
+    return fail('Resource not found',404);
+  }
+
+  if (
+    resource.uploader_id !== student.id &&
+    !(await requireAdmin(env,student))
+  ) {
+    return fail(
+      'Only the uploader or an administrator can delete this resource',
+      403
+    );
+  }
+
+  // Delete the actual media file from Google Drive first.
+  const googleToken = await driveToken(env);
+
+  const driveResponse = await fetch(
+    'https://www.googleapis.com/drive/v3/files/' +
+      encodeURIComponent(resource.file_id),
+    {
+      method:'DELETE',
+      headers:{Authorization:'Bearer '+googleToken}
+    }
+  );
+
+  if (!driveResponse.ok && driveResponse.status !== 404) {
+    const details = await driveResponse.json().catch(()=>({}));
+
+    return fail(
+      'Google Drive deletion failed: '+parseError(details),
+      502
+    );
+  }
+
+  // Remove Supabase metadata only after Drive deletion succeeds.
+  const dbResponse = await fetch(
+    env.SUPABASE_URL +
+      '/rest/v1/resources?id=eq.' +
+      encodeURIComponent(resource.id),
+    {
+      method:'DELETE',
+      headers:restHeaders(env,'',true)
+    }
+  );
+
+  if (!dbResponse.ok) {
+    return fail(
+      'The Google Drive file was removed but database cleanup failed. Please retry.',
+      502
+    );
+  }
+
+  return resp({ok:true});
+}
+
+async function permanentlyDeleteStudent(env, admin, targetId) {
+  if (!validUuid(targetId)) {
+    return fail('Invalid student identifier');
+  }
+
+  if (!(await requireAdmin(env,admin))) {
+    return fail('Administrator privileges required',403);
+  }
+
+  if (targetId === admin.id) {
+    return fail('You cannot delete your own administrator account',403);
+  }
+
+  const rows = await query(
+    env,
+    admin.token,
+    'profiles',
+    'id=eq.' + encodeURIComponent(targetId) +
+      '&select=id,role,avatar_file_id&limit=1',
+    true
+  );
+
+  const target = rows[0];
+
+  if (!target) return fail('Student not found',404);
+
+  if (target.role !== 'student') {
+    return fail('Only student accounts can be removed here',403);
+  }
+
+  // Delete the Supabase Auth account permanently.
+  // The SQL migration preserves messages and resources.
+  const deletion = await fetch(
+    env.SUPABASE_URL +
+      '/auth/v1/admin/users/' +
+      encodeURIComponent(targetId),
+    {
+      method:'DELETE',
+      headers:restHeaders(env,'',true),
+      body:JSON.stringify({should_soft_delete:false})
+    }
+  );
+
+  if (!deletion.ok) {
+    const details = await deletion.json().catch(()=>({}));
+
+    return fail(
+      'Student deletion failed. Check the SQL migration. ' +
+        parseError(details,'Contact the administrator.'),
+      409
+    );
+  }
+
+  // Remove the deleted student's unused profile picture.
+  // Shared learning resources are deliberately preserved.
+  if (target.avatar_file_id) {
+    try {
+      const token = await driveToken(env);
+      await driveDelete(target.avatar_file_id,token);
+    } catch {
+      // Account deletion has already succeeded.
+    }
+  }
+
+  return resp({ok:true});
+}
+
 export default {
   async fetch(req,env){
     const origin=req.headers.get('Origin')||'';
     const allowed=(env.ALLOWED_ORIGINS||'http://localhost:5173').split(',').map(x=>x.trim());
     const isAllowed=!!origin&&allowed.includes(origin);
     const cors={...(isAllowed?{'Access-Control-Allow-Origin':origin}:{}),'Vary':'Origin',
-      'Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, OPTIONS'};
+      'Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, DELETE, OPTIONS'};
     if(req.method==='OPTIONS') return new Response(null,{status:isAllowed?204:403,headers:cors});
     if(origin&&!isAllowed) return fail('Origin not allowed',403);
     const url=new URL(req.url);
@@ -204,6 +357,8 @@ export default {
       else if(req.method==='POST'&&url.pathname==='/api/upload') r=await upload(req,env,student);
       else if(req.method==='GET'&&url.pathname.startsWith('/api/file/')) r=await download(env,student,url.pathname.slice('/api/file/'.length));
       else if(req.method==='POST'&&url.pathname==='/api/ai') r=await ai(req,env,student);
+       else if(req.method==='DELETE'&&url.pathname.startsWith('/api/resources/')) r=await deleteLearningResource(env,student,url.pathname.slice('/api/resources/'.length));
+       else if(req.method==='DELETE'&&url.pathname.startsWith('/api/admin/students/')) r=await permanentlyDeleteStudent(env,student,url.pathname.slice('/api/admin/students/'.length));
       else r=fail('Not found',404);
     }catch(e){r=fail(logSafeError(e),500);}
     const headers=new Headers(r.headers);

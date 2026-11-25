@@ -122,7 +122,11 @@ function Login(){
 function Preview(){
   const [page,setPage]=useState('dashboard'),[selectedModule,setSelectedModule]=useState(null),[activeChat,setActiveChat]=useState('chat1'),[notice,setNotice]=useState('');
   const show=()=>{setNotice('This is a visual preview. Add the .env values, deploy the Worker and run the SQL to enable live features.');setTimeout(()=>setNotice(''),5200);};
-  return <Workspace chatStates={{}} unreadCounts={{}} onHideChat={()=>show()} onDeleteMessage={()=>show()} demo page={page} onAssignIntake={()=>show()} setPage={v=>{setPage(v);setSelectedModule(null);}} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={demoUser} me={samples.profiles[0]} profiles={samples.profiles} modules={samples.modules} resources={samples.resources} chats={samples.chats} members={samples.members} messages={samples.messages} online={['demo-1','demo-2','demo-4','demo-5']} showToast={show} notice={notice} setNotice={setNotice} setUpload={()=>show()} setGroup={()=>show()} setCreateModule={()=>show()} setAiResource={()=>show()} onChatUser={()=>show()} onManageGroup={()=>show()} onEditSemester={()=>show()} onSignOut={()=>show()} onFile={()=>show()} onSend={()=>show()} onProfileSave={()=>show()} onAvatar={()=>show()} />;
+  return <Workspace chatStates={{}} unreadCounts={{}} onHideChat={()=>show()} onDeleteMessage={()=>show()}
+    onDeleteResource={()=>show()}
+    onRemoveStudent={()=>show()}
+    moduleVisits={[]}
+    demo page={page} onAssignIntake={()=>show()} setPage={v=>{setPage(v);setSelectedModule(null);}} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={demoUser} me={samples.profiles[0]} profiles={samples.profiles} modules={samples.modules} resources={samples.resources} chats={samples.chats} members={samples.members} messages={samples.messages} online={['demo-1','demo-2','demo-4','demo-5']} showToast={show} notice={notice} setNotice={setNotice} setUpload={()=>show()} setGroup={()=>show()} setCreateModule={()=>show()} setAiResource={()=>show()} onChatUser={()=>show()} onManageGroup={()=>show()} onEditSemester={()=>show()} onSignOut={()=>show()} onFile={()=>show()} onSend={()=>show()} onProfileSave={()=>show()} onAvatar={()=>show()} />;
 }
 
 function SemesterCard({number,count,onClick}){
@@ -140,7 +144,8 @@ function StudentCard({
   online,
   isAdmin,
   onChatUser,
-  onAssignIntake
+  onAssignIntake,
+  onRemoveStudent
 }) {
   return (
     <div className="person-card">
@@ -194,11 +199,22 @@ function StudentCard({
         <MessageCircle size={16}/>
         Send message
       </button>
+      {isAdmin && (
+        <button
+          type="button"
+          className="btn btn-outline full"
+          style={{marginTop:8,color:'#b42318'}}
+          onClick={()=>onRemoveStudent(p)}
+        >
+          <Trash2 size={16}/>
+          Remove student
+        </button>
+      )}
     </div>
   );
 }
 
-function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeChat,setActiveChat,user,me,profiles,modules,resources,chats,members,messages,online,showToast,notice,setNotice,setUpload,setGroup,setCreateModule,setAiResource,onChatUser,onManageGroup,onEditSemester,onSignOut,onFile,onSend,onProfileSave,onAvatar,onAssignIntake,chatStates,unreadCounts,onHideChat,onDeleteMessage}){
+function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeChat,setActiveChat,user,me,profiles,modules,resources,chats,members,messages,online,showToast,notice,setNotice,setUpload,setGroup,setCreateModule,setAiResource,onChatUser,onManageGroup,onEditSemester,onSignOut,onFile,onSend,onProfileSave,onAvatar,onAssignIntake,chatStates,unreadCounts,onHideChat,onDeleteMessage,onDeleteResource,onRemoveStudent,moduleVisits=[]}){
 
   const [menuOpen,setMenuOpen]=useState(false),[selectedSemester,setSelectedSemester]=useState(null),[search,setSearch]=useState(''),[category,setCategory]=useState('All'),[studentSearch,setStudentSearch]=useState(''),[draft,setDraft]=useState('');
   const [selectedMessageId, setSelectedMessageId] = useState(null);
@@ -265,6 +281,22 @@ const visibleOnline = online.filter(id =>
 );
 
   const selected=modules.find(m=>m.id===selectedModule);
+
+  const recentModules = useMemo(() => {
+    const timestamps = new Map(
+      moduleVisits.map(v => [
+        v.module_id,
+        Date.parse(v.last_accessed_at) || 0
+      ])
+    );
+
+    return [...modules].sort((a,b) =>
+      (timestamps.get(b.id)||0) -
+      (timestamps.get(a.id)||0) ||
+      (Date.parse(b.created_at)||0) -
+      (Date.parse(a.created_at)||0)
+    );
+  }, [modules,moduleVisits]);
   
 const visibleChats = chats.filter(c => {
   const state = chatStates[c.id];
@@ -300,8 +332,8 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
         <div className="page-heading"><div><p className="kicker">YOUR LEARNING HUB</p><h1>Good to see you, {me?.full_name?.split(' ')[0]||'student'} <span className="wave">👋</span></h1><p className="muted">Here’s what’s happening in your learning space today.</p></div><button className="btn btn-outline" onClick={()=>go('people')}><Users size={17}/> View students</button></div>
         <section className="hero-card"><div className="hero-copy"><span className="hero-pill"><Sparkles size={15}/> THE SMARTER WAY TO STUDY</span><h2>Your next big idea<br/>starts <em>right here.</em></h2><p>Explore notes, share your knowledge, and learn better with your study community.</p><button className="btn btn-light" onClick={()=>go('modules')}>Explore modules <ArrowRight size={17}/></button></div><div className="hero-art" aria-hidden="true"><div className="hero-orbit orbit-a"/><div className="hero-orbit orbit-b"/><div className="hero-graphic g1"><BookOpen size={36}/></div><div className="hero-graphic g2"><MessageCircle size={31}/></div><div className="hero-graphic g3"><Sparkles size={31}/></div><div className="hero-graphic g4"><Check size={19}/></div></div></section>
         <div className="stats-row"><Stat icon={BookOpen} color="violet" value={modules.length} label="Learning modules"/><Stat icon={FolderOpen} color="blue" value={resources.length} label="Shared resources"/><Stat icon={Users} color="teal" value={online.length} label="Students online"/><Stat icon={MessageCircle} color="orange" value={chats.length} label="Conversations"/></div>
-        <div className="section-title-row"><div><h2>Your learning modules</h2><p>Pick up where you left off</p></div><button className="link-btn" onClick={()=>go('modules')}>View all <ArrowRight size={16}/></button></div>
-        {modules.length?<div className="module-grid dashboard-modules">{modules.slice(0,3).map((m,i)=><ModuleCard key={m.id} module={m} count={resources.filter(r=>r.module_id===m.id).length} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(m));setSelectedModule(m.id);}}/>)}</div>:<Blank icon={BookOpen} title="No modules yet" desc="Your administrator can create the first course module."/>}
+        <div className="section-title-row"><div><h2>Recent Modules</h2><p>Pick up where you left off</p></div><button className="link-btn" onClick={()=>go('modules')}>View all <ArrowRight size={16}/></button></div>
+        {modules.length?<div className="module-grid dashboard-modules">{recentModules.slice(0,3).map((m,i)=><ModuleCard key={m.id} module={m} count={resources.filter(r=>r.module_id===m.id).length} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(m));setSelectedModule(m.id);}}/>)}</div>:<Blank icon={BookOpen} title="No modules yet" desc="Your administrator can create the first course module."/>}
         <div className="bottom-grid"><section className="surface-card"><div className="card-title"><h2>Recently shared</h2><button className="link-btn" onClick={()=>go('modules')}>See all <ArrowRight size={15}/></button></div>{resources.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,4).map(r=><button className="recent-item" key={r.id} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(mById[r.module_id]));setSelectedModule(r.module_id);}}><span className={`file-icon ${r.mime_type?.startsWith('image/')?'file-img':'file-pdf'}`}><FileIcon mime={r.mime_type}/></span><span className="recent-name"><b>{r.title}</b><small>{mById[r.module_id]?.title||'Module'} • {when(r.created_at)}</small></span><ChevronRight size={17}/></button>)}{!resources.length&&<p className="empty-mini">No files have been shared yet.</p>}</section><section className="surface-card"><div className="card-title"><h2>Online right now</h2><span className="live-label"><span className="pulse-dot"/>LIVE</span></div>{profiles.filter(p=>p.role==='student' && visibleOnline.includes(p.id)).slice(0,4).map(p=><div className="online-person" key={p.id}><Avatar profile={p} online size={39}/><span><b>{p.full_name}</b><small>{p.role==='admin'?'Administrator':'Available to chat'}</small></span>{p.id!==user.id&&<button className="mini-action" onClick={()=>onChatUser(p.id)}><MessageCircle size={17}/></button>}</div>)}{!online.length&&<p className="empty-mini">No students connected right now.</p>}<button className="link-btn all-students" onClick={()=>go('people')}>View all students <ArrowRight size={16}/></button></section></div>
       </>}
       {page==='modules'&&(!selected?(selectedSemester===null?<>
@@ -318,7 +350,18 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
         <button className="back-link" onClick={()=>{setSelectedModule(null);setSelectedSemester(moduleSemester(selected));setSearch('');setCategory('All');}}><ArrowLeft size={17}/> Back to {semesterLabel(moduleSemester(selected))}</button>
         <div className="module-detail-head"><div className={`detail-icon tile-${selected.color||'violet'}`}><BookOpen size={31}/></div><div className="module-detail-text"><p className="kicker">{semesterLabel(moduleSemester(selected))} · {selected.category}</p><h1>{selected.title}</h1><p>{selected.description}</p><div className="meta-line"><span><FolderOpen size={15}/>{resources.filter(r=>r.module_id===selected.id).length} resources</span><span><Users size={15}/> Shared with all students</span></div>{me?.role==='admin'&&<button type="button" className="semester-edit-btn" onClick={()=>onEditSemester(selected)}><Settings2 size={15}/> Change semester</button>}</div><button className="btn btn-primary detail-upload" onClick={()=>setUpload({kind:'resource',moduleId:selected.id})}><CloudUpload size={18}/> Upload resource</button></div>
         <div className="section-title-row"><div><h2>Learning resources</h2><p>Notes, documents and media uploaded by your classmates</p></div><button className="btn btn-outline btn-sm" onClick={()=>setUpload({kind:'resource',moduleId:selected.id})}><Plus size={16}/> Add resource</button></div>
-        <div className="resource-list">{resources.filter(r=>r.module_id===selected.id).map(r=><ResourceRow key={r.id} resource={r} author={byId[r.uploader_id]} onFile={()=>onFile(r)} onAI={()=>setAiResource(r)}/>)}</div>
+        <div className="resource-list">{resources.filter(r=>r.module_id===selected.id).map(r=><ResourceRow
+    key={r.id}
+    resource={r}
+    author={byId[r.uploader_id]}
+    onFile={()=>onFile(r)}
+    onAI={()=>setAiResource(r)}
+    onDelete={()=>onDeleteResource(r)}
+    canDelete={
+      me?.role==='admin' ||
+      r.uploader_id===user.id
+    }
+  />)}</div>
         {!resources.some(r=>r.module_id===selected.id)&&<Blank icon={CloudUpload} title="Be the first to share" desc="Upload lecture notes, a PDF, images or other learning materials for everyone to see." action={<button className="btn btn-primary" onClick={()=>setUpload({kind:'resource',moduleId:selected.id})}><Plus size={17}/> Upload a file</button>}/>}
         <div className="info-strip"><ShieldCheck size={20}/><div><b>Media stored in Google Drive</b><p>Documents are stored privately in Drive and shared only through the LMS with authorized students.</p></div></div>
       </>)}
@@ -511,7 +554,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                         <span className="bubble-author">
                           {m.sender_id === user.id
                             ? 'You'
-                            : byId[m.sender_id]?.full_name || 'Student'}
+                            : byId[m.sender_id]?.full_name || 'Deleted student'}
 
                           {' · '}
                           {time(m.created_at)}
@@ -660,6 +703,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                 isAdmin={true}
                 onChatUser={onChatUser}
                 onAssignIntake={onAssignIntake}
+                onRemoveStudent={onRemoveStudent}
               />
             ))}
           </div>
@@ -705,7 +749,18 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
 }
 function Stat({icon:Icon,color,value,label}){return <div className="stat-card"><div className={`stat-icon icon-${color}`}><Icon size={21}/></div><div><strong>{value}</strong><span>{label}</span></div><div className="stat-arrow"><ArrowRight size={17}/></div></div>}
 function ModuleCard({module,count,onClick}){const colors={violet:'violet',blue:'blue',orange:'orange',teal:'teal',pink:'pink'};const cc=colors[module.color]||'violet';return <button className="module-card" onClick={onClick}><div className={`module-art module-art-${cc}`}><div className="module-symbol"><BookOpen size={28}/></div><span className="art-circle circle-one"/><span className="art-circle circle-two"/><span className="art-micro"><Sparkles size={17}/></span></div><div className="module-body"><span className="module-category">{module.category}</span><h3>{module.title}</h3><p>{module.description||'Explore shared resources in this module.'}</p><div className="module-bottom"><span><FolderOpen size={16}/>{count} {count===1?'resource':'resources'}</span><span className="module-open"><ArrowRight size={18}/></span></div></div></button>}
-function ResourceRow({resource,author,onFile,onAI}){return <div className="resource-row"><span className={`resource-file-icon ${resource.mime_type?.startsWith('image/')?'resource-image':resource.mime_type?.startsWith('video/')?'resource-video':'resource-document'}`}><FileIcon mime={resource.mime_type} size={24}/></span><div className="resource-content"><h3>{resource.title}</h3><p>{resource.file_name} <span>•</span> {bytes(resource.size_bytes)} <span>•</span> {when(resource.created_at)}</p><small>Shared by {author?.full_name||'Student'}</small></div><div className="resource-actions"><button className="btn btn-soft btn-sm" onClick={onAI}><Sparkles size={16}/> AI tools</button><button className="btn btn-outline btn-sm" onClick={onFile}><ArrowDownToLine size={17}/> Open</button></div></div>}
+function ResourceRow({resource,author,onFile,onAI,onDelete,canDelete}){return <div className="resource-row"><span className={`resource-file-icon ${resource.mime_type?.startsWith('image/')?'resource-image':resource.mime_type?.startsWith('video/')?'resource-video':'resource-document'}`}><FileIcon mime={resource.mime_type} size={24}/></span><div className="resource-content"><h3>{resource.title}</h3><p>{resource.file_name} <span>•</span> {bytes(resource.size_bytes)} <span>•</span> {when(resource.created_at)}</p><small>Shared by {author?.full_name||'Deleted student'}</small></div><div className="resource-actions"><button className="btn btn-soft btn-sm" onClick={onAI}><Sparkles size={16}/> AI tools</button><button className="btn btn-outline btn-sm" onClick={onFile}><ArrowDownToLine size={17}/> Open</button>
+      {canDelete&&(
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={onDelete}
+          style={{color:'#b42318'}}
+        >
+          <Trash2 size={16}/> Delete
+        </button>
+      )}
+    </div></div>}
 
 function UploadModal({upload,modules,onClose,onSuccess}){
   const [file,setFile]=useState(null),[title,setTitle]=useState(''),[description,setDescription]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -819,6 +874,7 @@ function AIModal({resource,onClose}){
 function Connected(){
   const [session,setSession]=useState(undefined),[profile,setProfile]=useState(null),[profiles,setProfiles]=useState([]),[modules,setModules]=useState([]),[resources,setResources]=useState([]),[chats,setChats]=useState([]),[members,setMembers]=useState([]),[messages,setMessages]=useState([]),[online,setOnline]=useState([]),[page,setPage]=useState('dashboard'),[selectedModule,setSelectedModule]=useState(null),[activeChat,setActiveChat]=useState(null),[upload,setUpload]=useState(null),[group,setGroup]=useState(false),[groupSettings,setGroupSettings]=useState(null),[editSemester,setEditSemester]=useState(null),[createModule,setCreateModule]=useState(false),[aiResource,setAiResource]=useState(null),[notice,setNotice]=useState(''),[fetching,setFetching]=useState(true);
   const [chatStates, setChatStates] = useState({});
+  const [moduleVisits,setModuleVisits] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
   const [chatMetaReady, setChatMetaReady] = useState(false);
   const notify=useCallback((message,kind='success')=>{setNotice({message,kind});},[]);
@@ -838,7 +894,7 @@ function Connected(){
   setChatMetaReady(true);}, [session?.user?.id, notify]);
   useEffect(() => {if (!session?.user) {setFetching(false);setProfile(null);setChatStates({});setUnreadCounts({});setChatMetaReady(false);return;}let ignore = false;setFetching(true);setChatMetaReady(false);Promise.all([refresh(),refreshMessages(),refreshChatState()]).finally(() => {if (!ignore) setFetching(false);});return () => {ignore = true;};}, [session?.user?.id,refresh,refreshMessages,refreshChatState]);
   useEffect(() => {if (!session?.user) return;
-  const channel = supabase.channel('campusflow-live-changes').on('postgres_changes',{event: '*',schema: 'public',table: 'messages'},() => {refreshMessages();refreshChatState();}).on('postgres_changes',{event: '*',schema: 'public',table: 'chat_user_state',filter: `user_id=eq.${session.user.id}`},() => refreshChatState()).on('postgres_changes',{event: 'INSERT',schema: 'public',table: 'resources'},() => refresh()).on('postgres_changes',{event: '*',schema: 'public',table: 'chats'},() => refresh()).on('postgres_changes',{event: 'INSERT',schema: 'public',table: 'chat_members'},() => refresh()).on('postgres_changes',{event: 'INSERT',schema: 'public',table: 'modules'},() => refresh()).subscribe();return () => {supabase.removeChannel(channel);};}, [session?.user?.id,refresh,refreshMessages,refreshChatState]);
+  const channel = supabase.channel('campusflow-live-changes').on('postgres_changes',{event: '*',schema: 'public',table: 'messages'},() => {refreshMessages();refreshChatState();}).on('postgres_changes',{event: '*',schema: 'public',table: 'chat_user_state',filter: `user_id=eq.${session.user.id}`},() => refreshChatState()).on('postgres_changes',{event: '*',schema: 'public',table: 'resources'},() => refresh()).on('postgres_changes',{event: '*',schema: 'public',table: 'chats'},() => refresh()).on('postgres_changes',{event: 'INSERT',schema: 'public',table: 'chat_members'},() => refresh()).on('postgres_changes',{event: 'INSERT',schema: 'public',table: 'modules'},() => refresh()).subscribe();return () => {supabase.removeChannel(channel);};}, [session?.user?.id,refresh,refreshMessages,refreshChatState]);
   useEffect(()=>{if(!session?.user)return;const channel=supabase.channel('campusflow-connected',{config:{presence:{key:session.user.id}}});channel.on('presence',{event:'sync'},()=>{const state=channel.presenceState();setOnline([...new Set(Object.values(state).flat().map(x=>x.user_id).filter(Boolean))]);}).subscribe(async(status)=>{if(status==='SUBSCRIBED')await channel.track({user_id:session.user.id,online_at:new Date().toISOString()});});return()=>{channel.untrack().catch(()=>{});supabase.removeChannel(channel);};},[session?.user?.id]);
 const visibleChatIds = useMemo(() => {return chats.filter(c =>!chatStates[c.id]?.hidden_at || Number(unreadCounts[c.id] || 0) > 0).map(c => c.id);}, [chats, chatStates, unreadCounts]);
 useEffect(() => {if (!session?.user || !chatMetaReady) return;setActiveChat(prev =>prev && visibleChatIds.includes(prev)? prev: visibleChatIds[0] || null);}, [session?.user?.id, chatMetaReady, visibleChatIds]);
@@ -856,6 +912,119 @@ useEffect(() => {if (!session?.user || !chatMetaReady ||page !== 'messages' ||!a
   const { error } = await supabase.rpc('assign_student_intake',{p_student_id: studentId,p_intake_year: year});if (error) throw error;await refresh();notify('Student intake year updated successfully!');} catch (error) {notify(error.message, 'error');}};
 
   const afterUpload=async(kind)=>{await refresh();await refreshMessages();notify(kind==='avatar'?'Profile photo updated':kind==='resource'?'Resource shared with the class!':'Attachment sent!');};
+
+  const onDeleteResource = async resource => {
+    if (
+      profile?.role !== 'admin' &&
+      resource.uploader_id !== session?.user?.id
+    ) {
+      notify('Only the uploader or admin may delete this resource.','error');
+      return;
+    }
+
+    if (!window.confirm(
+      'Permanently delete "' + resource.title +
+      '" for everyone, including its Google Drive file?'
+    )) return;
+
+    try {
+      await api(
+        '/api/resources/' + encodeURIComponent(resource.id),
+        {method:'DELETE'}
+      );
+
+      await refresh();
+      notify('Resource deleted for everyone.');
+    } catch (error) {
+      notify(error.message,'error');
+    }
+  };
+
+  const onRemoveStudent = async person => {
+    if (profile?.role !== 'admin' || person.role !== 'student') {
+      notify('Administrator access required.','error');
+      return;
+    }
+
+    const confirmation = window.prompt(
+      'PERMANENTLY DELETE ' + person.full_name +
+      ' (@' + person.username + ')?\\n' +
+      'This cannot be undone. Existing shared resources ' +
+      'and messages will remain.\\n\\n' +
+      'Type the username to confirm:'
+    );
+
+    if (confirmation === null) return;
+
+    if (confirmation !== person.username) {
+      notify('Username did not match. Nothing was deleted.','error');
+      return;
+    }
+
+    try {
+      await api(
+        '/api/admin/students/' + encodeURIComponent(person.id),
+        {method:'DELETE'}
+      );
+
+      await Promise.all([refresh(),refreshMessages()]);
+      notify('Student account permanently deleted.');
+    } catch (error) {
+      notify(error.message,'error');
+    }
+  };
+
+  const refreshModuleVisits = useCallback(async () => {
+    if (!session?.user?.id) {
+      setModuleVisits([]);
+      return;
+    }
+
+    const {data,error} = await supabase
+      .from('module_visits')
+      .select('module_id,last_accessed_at')
+      .eq('user_id',session.user.id)
+      .order('last_accessed_at',{ascending:false});
+
+    if (error) {
+      notify('Recent Modules error: '+error.message,'error');
+      return;
+    }
+
+    setModuleVisits(data||[]);
+  },[session?.user?.id,notify]);
+
+  useEffect(() => {
+    refreshModuleVisits();
+  },[refreshModuleVisits]);
+
+  useEffect(() => {
+    if (!session?.user?.id || !selectedModule) return;
+
+    let active = true;
+
+    (async () => {
+      const {error} = await supabase.rpc(
+        'mark_module_opened',
+        {p_module_id:selectedModule}
+      );
+
+      if (error) {
+        notify('Could not record module visit: '+error.message,'error');
+        return;
+      }
+
+      if (active) await refreshModuleVisits();
+    })();
+
+    return () => { active = false; };
+  },[
+    session?.user?.id,
+    selectedModule,
+    refreshModuleVisits,
+    notify
+  ]);
+
   const onSignOut=async()=>{await supabase.auth.signOut();avatarUrls.clear();setPage('dashboard');};
 
 const onDeleteMessage = async messageId => {
@@ -913,7 +1082,11 @@ const onHideChat = async chatId => {
   if(!session)return <Login onNotice={notify}/>;
   if(fetching)return <Loading label="Loading your workspace..."/>;
   if(!profile)return <div className="not-ready"><Logomark/><h2>Your profile is being prepared.</h2><p>Sign out and try again, or verify that you ran schema.sql in Supabase.</p><button className="btn btn-primary" onClick={onSignOut}>Sign out</button></div>;
-  return <><Workspace chatStates={chatStates} unreadCounts={unreadCounts} onHideChat={onHideChat} onDeleteMessage={onDeleteMessage} onAssignIntake={onAssignIntake}  demo={false} page={page} setPage={setPage} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={session.user} me={profile} profiles={profiles} modules={modules} resources={resources} chats={chats} members={members} messages={messages} online={online} notice={notice} setNotice={setNotice} showToast={notify} setUpload={setUpload} setGroup={setGroup} setCreateModule={setCreateModule} setAiResource={setAiResource} onChatUser={onChatUser} onManageGroup={chat=>setGroupSettings(chat.id)} onEditSemester={module=>setEditSemester(module.id)} onSignOut={onSignOut} onFile={onFile} onSend={onSend} onProfileSave={onProfileSave} onAvatar={()=>setUpload({kind:'avatar'})}/>{upload&&<UploadModal upload={upload} modules={modules} onClose={()=>setUpload(null)} onSuccess={afterUpload}/>} {group&&<GroupModal profiles={profiles} user={session.user} onClose={()=>setGroup(false)} onCreated={async id=>{await refresh();setActiveChat(id);setPage('messages');notify('Study group created!');}}/>} {groupSettings&&chats.find(c=>c.id===groupSettings)?.is_group&&<GroupSettingsModal key={groupSettings} chat={chats.find(c=>c.id===groupSettings)} profiles={profiles} memberRows={members} me={profile} onClose={()=>setGroupSettings(null)} onUpdated={async()=>{await refresh();notify('Group updated successfully!');}}/>} {editSemester&&modules.find(m=>m.id===editSemester)&&<ModuleSemesterModal key={editSemester} module={modules.find(m=>m.id===editSemester)} onClose={()=>setEditSemester(null)} onUpdated={async()=>{await refresh();notify('Module semester updated!');}}/>} {createModule&&<ModuleModal initialSemester={createModule.semester} user={session.user} onClose={()=>setCreateModule(false)} onCreated={async()=>{await refresh();notify('Module created!');}}/>} {aiResource&&<AIModal resource={aiResource} onClose={()=>setAiResource(null)}/>}</>;
+  return <><Workspace chatStates={chatStates} unreadCounts={unreadCounts} onHideChat={onHideChat} onDeleteMessage={onDeleteMessage} onAssignIntake={onAssignIntake}
+    onDeleteResource={onDeleteResource}
+    onRemoveStudent={onRemoveStudent}
+    moduleVisits={moduleVisits}
+    demo={false} page={page} setPage={setPage} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={session.user} me={profile} profiles={profiles} modules={modules} resources={resources} chats={chats} members={members} messages={messages} online={online} notice={notice} setNotice={setNotice} showToast={notify} setUpload={setUpload} setGroup={setGroup} setCreateModule={setCreateModule} setAiResource={setAiResource} onChatUser={onChatUser} onManageGroup={chat=>setGroupSettings(chat.id)} onEditSemester={module=>setEditSemester(module.id)} onSignOut={onSignOut} onFile={onFile} onSend={onSend} onProfileSave={onProfileSave} onAvatar={()=>setUpload({kind:'avatar'})}/>{upload&&<UploadModal upload={upload} modules={modules} onClose={()=>setUpload(null)} onSuccess={afterUpload}/>} {group&&<GroupModal profiles={profiles} user={session.user} onClose={()=>setGroup(false)} onCreated={async id=>{await refresh();setActiveChat(id);setPage('messages');notify('Study group created!');}}/>} {groupSettings&&chats.find(c=>c.id===groupSettings)?.is_group&&<GroupSettingsModal key={groupSettings} chat={chats.find(c=>c.id===groupSettings)} profiles={profiles} memberRows={members} me={profile} onClose={()=>setGroupSettings(null)} onUpdated={async()=>{await refresh();notify('Group updated successfully!');}}/>} {editSemester&&modules.find(m=>m.id===editSemester)&&<ModuleSemesterModal key={editSemester} module={modules.find(m=>m.id===editSemester)} onClose={()=>setEditSemester(null)} onUpdated={async()=>{await refresh();notify('Module semester updated!');}}/>} {createModule&&<ModuleModal initialSemester={createModule.semester} user={session.user} onClose={()=>setCreateModule(false)} onCreated={async()=>{await refresh();notify('Module created!');}}/>} {aiResource&&<AIModal resource={aiResource} onClose={()=>setAiResource(null)}/>}</>;
 
 }
 export default function App(){return ready?<Connected/>:<Preview/>;}
