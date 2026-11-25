@@ -199,7 +199,10 @@ function StudentCard({
 }
 
 function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeChat,setActiveChat,user,me,profiles,modules,resources,chats,members,messages,online,showToast,notice,setNotice,setUpload,setGroup,setCreateModule,setAiResource,onChatUser,onManageGroup,onEditSemester,onSignOut,onFile,onSend,onProfileSave,onAvatar,onAssignIntake,chatStates,unreadCounts,onHideChat,onDeleteMessage}){
+
   const [menuOpen,setMenuOpen]=useState(false),[selectedSemester,setSelectedSemester]=useState(null),[search,setSearch]=useState(''),[category,setCategory]=useState('All'),[studentSearch,setStudentSearch]=useState(''),[draft,setDraft]=useState('');
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  useEffect(() => {setSelectedMessageId(null);}, [activeChat]);
   const byId=useMemo(()=>Object.fromEntries(profiles.map(x=>[x.id,x])),[profiles]);
   const mById=useMemo(()=>Object.fromEntries(modules.map(x=>[x.id,x])),[modules]);
   const semesterModules=modules.filter(m=>moduleSemester(m)===selectedSemester);
@@ -344,7 +347,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
           const unread = Number(unreadCounts[c.id] || 0);
 
           const lastMessage = messages
-            .filter(m => m.chat_id === c.id)
+            .filter(m => m.chat_id === c.id && !m.deleted_at)
             .at(-1);
 
           const preview = lastMessage
@@ -485,8 +488,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                 <span>Conversation</span>
               </div>
 
-              {messages
-                .filter(m => m.chat_id === activeConversation.id)
+              {messages.filter(m =>m.chat_id === activeConversation.id &&!m.deleted_at)
                 .map(m => {
                   const unread = isUnreadMessage(m);
 
@@ -515,7 +517,24 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                           {time(m.created_at)}
                         </span>
 
-                        <div className="bubble">
+                        <div
+                          className="bubble"
+                          role={!demo && (m.sender_id === user.id || me?.role === 'admin') ? 'button' : undefined}
+                          tabIndex={!demo && (m.sender_id === user.id || me?.role === 'admin') ? 0 : undefined}
+                          aria-label={!demo && (m.sender_id === user.id || me?.role === 'admin') ? 'Click to manage message' : undefined}
+                          onClick={() => {
+                            if (!demo && (m.sender_id === user.id || me?.role === 'admin')) {
+                              setSelectedMessageId(prev => prev === m.id ? null : m.id);
+                            }
+                          }}
+                          onKeyDown={e => {
+                            if (!demo && (m.sender_id === user.id || me?.role === 'admin') && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault();
+                              setSelectedMessageId(prev => prev === m.id ? null : m.id);
+                            }
+                          }}
+                          style={{cursor: !demo && (m.sender_id === user.id || me?.role === 'admin') ? 'pointer' : 'default'}}
+                        >
                           {m.deleted_at ? (
                             <p className="deleted-message">
                               <Trash2 size={14}/>
@@ -536,7 +555,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                               {m.file_id && (
                                 <button
                                   className="chat-attachment"
-                                  onClick={() => onFile(m)}
+                                  onClick={e => {e.stopPropagation();onFile(m);}}
                                 >
                                   <Paperclip size={16}/>
                                   {m.file_name || 'Attachment'}
@@ -556,6 +575,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
 
                         {!demo &&
                           !m.deleted_at &&
+                          selectedMessageId === m.id &&
                           (
                             m.sender_id === user.id ||
                             me?.role === 'admin'
@@ -567,7 +587,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                                 fontSize: 12,
                                 marginTop: 6
                               }}
-                              onClick={() => onDeleteMessage(m.id)}
+                              onClick={() => {setSelectedMessageId(null);onDeleteMessage(m.id);}}
                             >
                               <Trash2 size={13}/>
                               Delete message
@@ -579,7 +599,7 @@ const isUnreadMessage = m => {if (m.sender_id === user.id || m.deleted_at) {retu
                 })}
 
               {!messages.some(
-                m => m.chat_id === activeConversation.id
+                m => m.chat_id === activeConversation.id && !m.deleted_at
               ) && (
               <div className="thread-empty"> Say hello! This is the beginning of your conversation. </div>)}
             </div><form className="chat-composer" onSubmit={e => {e.preventDefault(); if (!draft.trim()) return; onSend(activeConversation.id, draft.trim()); setDraft('');}}>
