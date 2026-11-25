@@ -49,7 +49,7 @@ const colorMap=['violet','blue','orange','teal','pink'];
 const semesterNumbers=[1,2,3,4,5,6,7,8];
 // Intake years available during registration.
 const intakeYears = Array.from(
-  { length: new Date().getFullYear() - 1998 },
+  { length: new Date().getFullYear() - 2020 },
   (_, i) => new Date().getFullYear() + 1 - i
 );
 const moduleSemester=m=>m?.semester==null?'unassigned':Number(m.semester);
