@@ -47,6 +47,11 @@ const demoUser = {id:'demo-1',username:'alex'};
 const colorMap=['violet','blue','orange','teal','pink'];
 // To support a different programme duration, change this list and the SQL check constraint together.
 const semesterNumbers=[1,2,3,4,5,6,7,8];
+// Intake years available during registration.
+const intakeYears = Array.from(
+  { length: new Date().getFullYear() - 1998 },
+  (_, i) => new Date().getFullYear() + 1 - i
+);
 const moduleSemester=m=>m?.semester==null?'unassigned':Number(m.semester);
 const semesterLabel=semester=>semester==='unassigned'?'Unassigned modules':`Semester ${semester}`;
 const validUploadTypes = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.docx,.pptx,.xlsx,.mp4,.webm,.mp3,.wav,.ogg,.m4a';
@@ -80,13 +85,17 @@ function Toast({toast,onDismiss}){if(!toast)return null;return <div className={`
 function Logomark({small=false}){return <span className={`logo-mark ${small?'logo-small':''}`}><GraduationCap size={small?20:26} strokeWidth={2.15}/></span>}
 function Login(){
   const [tab,setTab]=useState('login'),[name,setName]=useState(''),[username,setUsername]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [intakeYear, setIntakeYear] = useState('');
   const submit=async(e)=>{e.preventDefault();setBusy(true);setError('');try{
     const handle=normalizeUsername(username);
     if(!isValidUsername(handle)) throw new Error('Username must be 3–24 characters, start with a letter and use only letters, numbers or underscores.');
     const alias=usernameAuthEmail(handle);
     if(tab==='signup'){
       if(name.trim().length<2) throw new Error('Enter your full name.');
-      const {data,error}=await supabase.auth.signUp({email:alias,password,options:{data:{full_name:name.trim(),username:handle}}});
+      if (!intakeYear || !intakeYears.includes(Number(intakeYear))) {
+        throw new Error('Please select your intake year.');
+      }
+      const { data, error } = await supabase.auth.signUp({email: alias,password,options: {data: {full_name: name.trim(),username: handle,intake_year: Number(intakeYear)}  }});
       if(error)throw error;
       if(!data?.session) throw new Error('Disable Confirm email in Supabase Auth settings. Username accounts cannot receive verification emails.');
     } else {
@@ -94,13 +103,17 @@ function Login(){
       if(error)throw error;
     }
   }catch(e){setError(/user already registered/i.test(e.message)?'That username is already taken. Choose another.':e.message);}finally{setBusy(false);}};
-  return <div className="auth-layout"><div className="auth-art"><div className="auth-brand"><Logomark/><b>MORA-BPM<span></span></b></div><div className="auth-hero"><div className="eyebrow light"><span className="eyebrow-dot"/> YOUR SPACE TO LEARN TOGETHER</div><h1>Better learning<br/>happens <em>together.</em></h1><p>Everything you need to learn, connect, share and grow — all in one beautifully simple space.</p><div className="auth-features"><div><BookOpenCheck size={21}/> Shared course resources</div><div><MessageCircle size={21}/> Real-time study chats</div><div><Sparkles size={21}/> AI-powered study tools</div></div></div><div className="auth-decoration auth-dec-one"/><div className="auth-decoration auth-dec-two"/><div className="auth-bottom">Made for curious minds, built for your campus. ✦</div></div><div className="auth-panel"><div className="auth-mobile-brand"><Logomark small/><b>Mora-BPM<span>.</span></b></div><div className="auth-form"><div className="auth-kicker">WELCOME TO Mora - BPM</div><h2>{tab==='login'?'Welcome back 👋':'Let’s get started ✨'}</h2><p className="muted">{tab==='login'?'Sign in with your username and password.':'Create a student account without an email address.'}</p><div className="auth-tabs"><button className={tab==='login'?'selected':''} onClick={()=>{setTab('login');setError('');}}>Sign in</button><button className={tab==='signup'?'selected':''} onClick={()=>{setTab('signup');setError('');}}>Create account</button></div><form onSubmit={submit} className="stack-form">{tab==='signup'&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} required minLength={2} maxLength={80} placeholder="Your full name" autoComplete="name"/></label>}<label>Username<div className="input-wrap"><UserRound size={18}/><input type="text" required value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} pattern="[A-Za-z][A-Za-z0-9_]{2,23}" title="Start with a letter; only letters, numbers and underscores" autoCapitalize="none" spellCheck={false} autoComplete="username" placeholder="e.g. student123"/></div>{tab==='signup'&&<small>3–24 characters; letters, numbers, underscores. Usernames ignore capitalization.</small>}</label><label>Password<div className="input-wrap"><LockKeyhole size={18}/><input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='login'?'current-password':'new-password'} placeholder="Enter your password"/></div></label>{error&&<p className="form-error">{error}</p>}<button className="btn btn-primary full" type="submit" disabled={busy}>{busy?<LoaderCircle size={18} className="spin"/>:null}{tab==='login'?'Sign in to your workspace':'Create your account'}<ArrowRight size={18}/></button></form><p className="auth-footer">No email required. Keep your password safe; account recovery is handled by an administrator. Your files stay in private Google Drive storage.</p></div></div></div>;
+  return <div className="auth-layout"><div className="auth-art"><div className="auth-brand"><Logomark/><b>MORA-BPM<span></span></b></div><div className="auth-hero"><div className="eyebrow light"><span className="eyebrow-dot"/> YOUR SPACE TO LEARN TOGETHER</div><h1>Better learning<br/>happens <em>together.</em></h1><p>Everything you need to learn, connect, share and grow — all in one beautifully simple space.</p><div className="auth-features"><div><BookOpenCheck size={21}/> Shared course resources</div><div><MessageCircle size={21}/> Real-time study chats</div><div><Sparkles size={21}/> AI-powered study tools</div></div></div><div className="auth-decoration auth-dec-one"/><div className="auth-decoration auth-dec-two"/><div className="auth-bottom">Made for curious minds, built for your campus. ✦</div></div><div className="auth-panel"><div className="auth-mobile-brand"><Logomark small/><b>Mora-BPM<span>.</span></b></div><div className="auth-form"><div className="auth-kicker">WELCOME TO Mora - BPM</div><h2>{tab==='login'?'Welcome back 👋':'Let’s get started ✨'}</h2><p className="muted">{tab==='login'?'Sign in with your username and password.':'Create a student account without an email address.'}</p><div className="auth-tabs"><button className={tab==='login'?'selected':''} onClick={()=>{setTab('login');setError('');}}>Sign in</button><button className={tab==='signup'?'selected':''} onClick={()=>{setTab('signup');setError('');}}>Create account</button></div><form onSubmit={submit} className="stack-form">{tab==='signup'&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} required minLength={2} maxLength={80} placeholder="Your full name" autoComplete="name"/></label>}{tab === 'signup' && (
+  <label>Intake year<select value={intakeYear} onChange={e => setIntakeYear(e.target.value)} required style={{width: '100%', minHeight: 48, padding: '12px',borderRadius: 10, border: '1px solid #d9deea', background: '#fff',fontSize: 14}}>
+      <option value="">Select your intake year</option> {intakeYears.map(year => (<option key={year} value={year}>{year} Intake</option>))}</select><small>Select the year you joined the university.</small>
+  </label>
+)}<label>Username<div className="input-wrap"><UserRound size={18}/><input type="text" required value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} pattern="[A-Za-z][A-Za-z0-9_]{2,23}" title="Start with a letter; only letters, numbers and underscores" autoCapitalize="none" spellCheck={false} autoComplete="username" placeholder="e.g. ben.25"/></div>{tab==='signup'&&<small>3–24 characters; letters, numbers, underscores. Usernames ignore capitalization.</small>}</label><label>Password<div className="input-wrap"><LockKeyhole size={18}/><input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='login'?'current-password':'new-password'} placeholder="Enter your password"/></div></label>{error&&<p className="form-error">{error}</p>}<button className="btn btn-primary full" type="submit" disabled={busy}>{busy?<LoaderCircle size={18} className="spin"/>:null}{tab==='login'?'Sign in to your workspace':'Create your account'}<ArrowRight size={18}/></button></form><p className="auth-footer">No email required. Keep your password safe; account recovery is handled by an administrator. Your files stay in private Google Drive storage.</p></div></div></div>;
 }
 
 function Preview(){
   const [page,setPage]=useState('dashboard'),[selectedModule,setSelectedModule]=useState(null),[activeChat,setActiveChat]=useState('chat1'),[notice,setNotice]=useState('');
   const show=()=>{setNotice('This is a visual preview. Add the .env values, deploy the Worker and run the SQL to enable live features.');setTimeout(()=>setNotice(''),5200);};
-  return <Workspace demo page={page} setPage={v=>{setPage(v);setSelectedModule(null);}} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={demoUser} me={samples.profiles[0]} profiles={samples.profiles} modules={samples.modules} resources={samples.resources} chats={samples.chats} members={samples.members} messages={samples.messages} online={['demo-1','demo-2','demo-4','demo-5']} showToast={show} notice={notice} setNotice={setNotice} setUpload={()=>show()} setGroup={()=>show()} setCreateModule={()=>show()} setAiResource={()=>show()} onChatUser={()=>show()} onManageGroup={()=>show()} onEditSemester={()=>show()} onSignOut={()=>show()} onFile={()=>show()} onSend={()=>show()} onProfileSave={()=>show()} onAvatar={()=>show()} />;
+  return <Workspace demo page={page} onAssignIntake={()=>show()} setPage={v=>{setPage(v);setSelectedModule(null);}} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={demoUser} me={samples.profiles[0]} profiles={samples.profiles} modules={samples.modules} resources={samples.resources} chats={samples.chats} members={samples.members} messages={samples.messages} online={['demo-1','demo-2','demo-4','demo-5']} showToast={show} notice={notice} setNotice={setNotice} setUpload={()=>show()} setGroup={()=>show()} setCreateModule={()=>show()} setAiResource={()=>show()} onChatUser={()=>show()} onManageGroup={()=>show()} onEditSemester={()=>show()} onSignOut={()=>show()} onFile={()=>show()} onSend={()=>show()} onProfileSave={()=>show()} onAvatar={()=>show()} />;
 }
 
 function SemesterCard({number,count,onClick}){
@@ -112,14 +125,133 @@ function SemesterCard({number,count,onClick}){
     <span className="semester-card-bottom"><span>{count} {count===1?'module':'modules'}</span><span className="semester-card-arrow"><ArrowRight size={17}/></span></span>
   </button>;
 }
-function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeChat,setActiveChat,user,me,profiles,modules,resources,chats,members,messages,online,showToast,notice,setNotice,setUpload,setGroup,setCreateModule,setAiResource,onChatUser,onManageGroup,onEditSemester,onSignOut,onFile,onSend,onProfileSave,onAvatar}){
+
+function StudentCard({
+  p,
+  online,
+  isAdmin,
+  onChatUser,
+  onAssignIntake
+}) {
+  return (
+    <div className="person-card">
+      <div className="person-top">
+        <Avatar profile={p} size={60} online={online}/>
+
+        <span className={`presence-label ${online ? 'present' : 'absent'}`}>
+          <i/>
+          {online ? 'Online' : 'Offline'}
+        </span>
+      </div>
+
+      <h3>{p.full_name}</h3>
+      <p>@{p.username}</p>
+
+      <span className="person-role">
+        <GraduationCap size={14}/>
+        Student
+      </span>
+
+      {isAdmin && (
+        <label style={{display:'block',margin:'12px 0',fontSize:13}}>
+          Intake year
+
+          <select
+            value={p.intake_year ?? ''}
+            onChange={e => onAssignIntake(p.id, Number(e.target.value))}
+            style={{
+              width:'100%',
+              padding:10,
+              marginTop:6,
+              borderRadius:8,
+              border:'1px solid #d9deea'
+            }}
+          >
+            <option value="" disabled>Unassigned</option>
+
+            {intakeYears.map(year => (
+              <option key={year} value={year}>
+                {year} Intake
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <button
+        className="btn btn-outline full"
+        onClick={() => onChatUser(p.id)}
+      >
+        <MessageCircle size={16}/>
+        Send message
+      </button>
+    </div>
+  );
+}
+
+function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeChat,setActiveChat,user,me,profiles,modules,resources,chats,members,messages,online,showToast,notice,setNotice,setUpload,setGroup,setCreateModule,setAiResource,onChatUser,onManageGroup,onEditSemester,onSignOut,onFile,onSend,onProfileSave,onAvatar,onAssignIntake}){
   const [menuOpen,setMenuOpen]=useState(false),[selectedSemester,setSelectedSemester]=useState(null),[search,setSearch]=useState(''),[category,setCategory]=useState('All'),[studentSearch,setStudentSearch]=useState(''),[draft,setDraft]=useState('');
   const byId=useMemo(()=>Object.fromEntries(profiles.map(x=>[x.id,x])),[profiles]);
   const mById=useMemo(()=>Object.fromEntries(modules.map(x=>[x.id,x])),[modules]);
   const semesterModules=modules.filter(m=>moduleSemester(m)===selectedSemester);
   const visibleModules=semesterModules.filter(m=>(category==='All'||m.category===category)&&`${m.title} ${m.description}`.toLowerCase().includes(search.toLowerCase()));
   const categories=['All',...new Set(semesterModules.map(m=>m.category))];
-  const people=profiles.filter(p=>p.id!==user.id&&`${p.full_name} ${p.username}`.toLowerCase().includes(studentSearch.toLowerCase()));
+  const people = profiles.filter(p => {
+  if (p.role !== 'student') return false;
+  if (p.id === user.id) return false;
+
+  // Admins can see students from every intake.
+  if (me?.role !== 'admin') {
+    if (me?.intake_year == null) return false;
+    if (p.intake_year !== me.intake_year) return false;
+  }
+
+  const query = studentSearch.toLowerCase();
+
+  return `${p.full_name} ${p.username}`
+    .toLowerCase()
+    .includes(query);
+});
+
+  // Group students by intake year for administrators.
+  const intakeGroups = Object.entries(
+  people.reduce((groups, student) => {
+  const year = student.intake_year == null
+    ? 'Unassigned'
+    : String(student.intake_year);
+
+    if (!groups[year]) groups[year] = [];
+
+    groups[year].push(student);
+
+    return groups;
+  }, {})
+).sort(([a], [b]) => {
+  if (a === 'Unassigned') return 1;
+  if (b === 'Unassigned') return -1;
+
+  return Number(b) - Number(a);
+});
+
+// Only show online students within the permitted directory.
+const visibleOnline = online.filter(id =>
+  profiles.some(p =>
+    p.id === id &&
+    (
+      me?.role === 'admin'
+        ? p.role === 'student'
+        : (
+            p.id === user.id ||
+            (
+              p.role === 'student' &&
+              me?.intake_year != null &&
+              p.intake_year === me.intake_year
+            )
+          )
+    )
+  )
+);
+
   const selected=modules.find(m=>m.id===selectedModule);
   const activeConversation=chats.find(c=>c.id===activeChat);
   const chatTitle=c=>c?.is_group?c.title:(members.filter(m=>m.chat_id===c?.id&&m.user_id!==user.id).map(m=>byId[m.user_id]?.full_name).filter(Boolean).join(', ')||'Direct conversation');
@@ -146,7 +278,7 @@ function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeCha
         <div className="stats-row"><Stat icon={BookOpen} color="violet" value={modules.length} label="Learning modules"/><Stat icon={FolderOpen} color="blue" value={resources.length} label="Shared resources"/><Stat icon={Users} color="teal" value={online.length} label="Students online"/><Stat icon={MessageCircle} color="orange" value={chats.length} label="Conversations"/></div>
         <div className="section-title-row"><div><h2>Your learning modules</h2><p>Pick up where you left off</p></div><button className="link-btn" onClick={()=>go('modules')}>View all <ArrowRight size={16}/></button></div>
         {modules.length?<div className="module-grid dashboard-modules">{modules.slice(0,3).map((m,i)=><ModuleCard key={m.id} module={m} count={resources.filter(r=>r.module_id===m.id).length} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(m));setSelectedModule(m.id);}}/>)}</div>:<Blank icon={BookOpen} title="No modules yet" desc="Your administrator can create the first course module."/>}
-        <div className="bottom-grid"><section className="surface-card"><div className="card-title"><h2>Recently shared</h2><button className="link-btn" onClick={()=>go('modules')}>See all <ArrowRight size={15}/></button></div>{resources.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,4).map(r=><button className="recent-item" key={r.id} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(mById[r.module_id]));setSelectedModule(r.module_id);}}><span className={`file-icon ${r.mime_type?.startsWith('image/')?'file-img':'file-pdf'}`}><FileIcon mime={r.mime_type}/></span><span className="recent-name"><b>{r.title}</b><small>{mById[r.module_id]?.title||'Module'} • {when(r.created_at)}</small></span><ChevronRight size={17}/></button>)}{!resources.length&&<p className="empty-mini">No files have been shared yet.</p>}</section><section className="surface-card"><div className="card-title"><h2>Online right now</h2><span className="live-label"><span className="pulse-dot"/>LIVE</span></div>{profiles.filter(p=>online.includes(p.id)).slice(0,4).map(p=><div className="online-person" key={p.id}><Avatar profile={p} online size={39}/><span><b>{p.full_name}</b><small>{p.role==='admin'?'Administrator':'Available to chat'}</small></span>{p.id!==user.id&&<button className="mini-action" onClick={()=>onChatUser(p.id)}><MessageCircle size={17}/></button>}</div>)}{!online.length&&<p className="empty-mini">No students connected right now.</p>}<button className="link-btn all-students" onClick={()=>go('people')}>View all students <ArrowRight size={16}/></button></section></div>
+        <div className="bottom-grid"><section className="surface-card"><div className="card-title"><h2>Recently shared</h2><button className="link-btn" onClick={()=>go('modules')}>See all <ArrowRight size={15}/></button></div>{resources.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,4).map(r=><button className="recent-item" key={r.id} onClick={()=>{go('modules');setSelectedSemester(moduleSemester(mById[r.module_id]));setSelectedModule(r.module_id);}}><span className={`file-icon ${r.mime_type?.startsWith('image/')?'file-img':'file-pdf'}`}><FileIcon mime={r.mime_type}/></span><span className="recent-name"><b>{r.title}</b><small>{mById[r.module_id]?.title||'Module'} • {when(r.created_at)}</small></span><ChevronRight size={17}/></button>)}{!resources.length&&<p className="empty-mini">No files have been shared yet.</p>}</section><section className="surface-card"><div className="card-title"><h2>Online right now</h2><span className="live-label"><span className="pulse-dot"/>LIVE</span></div>{profiles.filter(p=>p.role==='student' && visibleOnline.includes(p.id)).slice(0,4).map(p=><div className="online-person" key={p.id}><Avatar profile={p} online size={39}/><span><b>{p.full_name}</b><small>{p.role==='admin'?'Administrator':'Available to chat'}</small></span>{p.id!==user.id&&<button className="mini-action" onClick={()=>onChatUser(p.id)}><MessageCircle size={17}/></button>}</div>)}{!online.length&&<p className="empty-mini">No students connected right now.</p>}<button className="link-btn all-students" onClick={()=>go('people')}>View all students <ArrowRight size={16}/></button></section></div>
       </>}
       {page==='modules'&&(!selected?(selectedSemester===null?<>
         <div className="page-heading"><div><p className="kicker">LEARN BY SEMESTER</p><h1>My Modules</h1><p className="muted">Choose a semester to see its modules and study materials.</p></div>{me?.role==='admin'&&<button className="btn btn-primary" onClick={()=>setCreateModule({semester:typeof selectedSemester==='number'?selectedSemester:null})}><Plus size={18}/> New module</button>}</div>
@@ -171,12 +303,92 @@ function Workspace({demo,page,setPage,selectedModule,setSelectedModule,activeCha
         <div className="chat-layout"><aside className="conversation-list"><div className="chat-list-header"><h3>Chats <span>{chats.length}</span></h3><button className="icon-btn" title="New group" onClick={()=>setGroup(true)}><Plus size={18}/></button></div>{chats.map(c=><button key={c.id} className={`conversation-item ${activeChat===c.id?'conversation-active':''}`} onClick={()=>setActiveChat(c.id)}>{c.is_group?<span className="group-avatar"><Users size={22}/></span>:<Avatar profile={chatPeer(c)} size={43} online={online.includes(chatPeer(c)?.id)}/>}<span className="conversation-body"><b>{chatTitle(c)}</b><small>{c.is_group?`${members.filter(m=>m.chat_id===c.id).length} members`:'Private conversation'}</small></span><ChevronRight size={16}/></button>)}{!chats.length&&<div className="no-chats"><MessageCircle size={25}/><p>No conversations yet.<br/>Find a student to start chatting.</p><button onClick={()=>go('people')} className="link-btn">Browse students <ArrowRight size={15}/></button></div>}</aside>
           <section className="thread">{activeConversation?<><div className="thread-header">{activeConversation.is_group?<span className="group-avatar"><Users size={21}/></span>:<Avatar profile={chatPeer(activeConversation)} size={43} online={online.includes(chatPeer(activeConversation)?.id)}/>}<span><b>{chatTitle(activeConversation)}</b><small>{activeConversation.is_group?`${members.filter(m=>m.chat_id===activeConversation.id).length} group members`:'Private chat • only participants can read messages'}</small></span>{activeConversation.is_group&&<button type="button" className="manage-group-btn" onClick={()=>onManageGroup(activeConversation)} title="View members and manage this group"><Settings2 size={16}/><span>{activeConversation.created_by===user.id||me?.role==='admin'?'Manage group':'Group info'}</span></button>}<span className="thread-secure"><ShieldCheck size={15}/> Private</span></div><div className="thread-messages" key={activeConversation.id}><div className="chat-date"><span>Conversation</span></div>{messages.filter(m=>m.chat_id===activeConversation.id).map((m,i)=><div key={m.id} className={`bubble-row ${m.sender_id===user.id?'bubble-own':''}`}>{m.sender_id!==user.id&&<Avatar profile={byId[m.sender_id]} size={30}/>}<div><span className="bubble-author">{m.sender_id===user.id?'You':byId[m.sender_id]?.full_name||'Student'} · {time(m.created_at)}</span><div className="bubble">{m.body&&<p>{m.body}</p>}{m.file_id&&<button className="chat-attachment" onClick={()=>onFile(m)}><Paperclip size={16}/>{m.file_name||'Attachment'} <ArrowDownToLine size={15}/></button>}{demo&&m.id==='msg1'&&<span className="demo-attachment"><FileText size={16}/> python_intro.pdf</span>}</div></div></div>)}{!messages.some(m=>m.chat_id===activeConversation.id)&&<div className="thread-empty">Say hello! This is the beginning of your conversation.</div>}</div><form className="chat-composer" onSubmit={e=>{e.preventDefault();if(!draft.trim())return;onSend(activeConversation.id,draft.trim());setDraft('');}}><button type="button" className="icon-btn" title="Attach file from device" onClick={()=>setUpload({kind:'message',chatId:activeConversation.id})}><Paperclip size={20}/></button><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type a message..." maxLength={2000}/><button className="send-btn" type="submit" disabled={!draft.trim()} aria-label="Send message"><Send size={18}/></button></form></>:<Blank icon={MessageCircle} title="Select a conversation" desc="Start a private message or create a study group."/>}</section></div>
       </>}
-      {page==='people'&&<>
-        <div className="page-heading"><div><p className="kicker">YOUR COMMUNITY</p><h1>Students & classmates</h1><p className="muted">Find people, see who’s online and collaborate together.</p></div><span className="people-count"><span className="pulse-dot"/>{online.length} currently online</span></div>
-        <div className="toolbar"><div className="search-field"><Search size={19}/><input placeholder="Search students by name or username..." value={studentSearch} onChange={e=>setStudentSearch(e.target.value)}/></div><span className="toolbar-meta">{profiles.length} registered members</span></div>
-        <div className="people-grid">{people.map(p=><div className="person-card" key={p.id}><div className="person-top"><Avatar profile={p} size={60} online={online.includes(p.id)}/><span className={`presence-label ${online.includes(p.id)?'present':'absent'}`}><i/>{online.includes(p.id)?'Online':'Offline'}</span></div><h3>{p.full_name}</h3><p>@{p.username}</p><span className="person-role">{p.role==='admin'?<ShieldCheck size={14}/>:<GraduationCap size={14}/>} {p.role==='admin'?'Administrator':'Student'}</span><button className="btn btn-outline full" onClick={()=>onChatUser(p.id)}><MessageCircle size={16}/> Send message</button></div>)}</div>
-        {!people.length&&<Blank icon={Users} title="No students found" desc="Try searching with a different name or username."/>}
-      </>}
+      
+      {page === 'people' && (<>
+        <div className="page-heading"><div><p className="kicker">YOUR COMMUNITY</p><h1>{me?.role === 'admin'? 'Students by Intake Year': 'Students & Classmates'}</h1><p className="muted">
+        {me?.role === 'admin'? 'Manage students from every intake year.': `Find classmates from your ${me?.intake_year ?? 'unassigned'} intake.`}</p></div>
+
+      <span className="people-count">
+        <span className="pulse-dot"/>
+        {visibleOnline.length} currently online
+      </span>
+    </div>
+
+    <div className="toolbar">
+      <div className="search-field">
+        <Search size={19}/>
+
+        <input
+          placeholder="Search students..."
+          value={studentSearch}
+          onChange={e => setStudentSearch(e.target.value)}
+        />
+      </div>
+
+      <span className="toolbar-meta">
+        {people.length} students
+      </span>
+    </div>
+
+    {me?.role === 'admin' ? (
+      intakeGroups.map(([year, students]) => (
+        <section key={year} style={{marginBottom:30}}>
+          <div className="section-title-row">
+            <div>
+              <h2>
+                {year === 'Unassigned'
+                  ? 'Unassigned Students'
+                  : `${year} Intake`}
+              </h2>
+
+              <p>
+                {students.length} students
+              </p>
+            </div>
+          </div>
+
+          <div className="people-grid">
+            {students.map(p => (
+              <StudentCard
+                key={p.id}
+                p={p}
+                online={visibleOnline.includes(p.id)}
+                isAdmin={true}
+                onChatUser={onChatUser}
+                onAssignIntake={onAssignIntake}
+              />
+            ))}
+          </div>
+        </section>
+      ))
+    ) : (
+      <div className="people-grid">
+        {people.map(p => (
+          <StudentCard
+            key={p.id}
+            p={p}
+            online={visibleOnline.includes(p.id)}
+            isAdmin={false}
+            onChatUser={onChatUser}
+          />
+        ))}
+      </div>
+    )}
+
+    {!people.length && (
+      <Blank
+        icon={Users}
+        title="No students found"
+        desc={
+          me?.role !== 'admin' && me?.intake_year == null
+            ? 'Ask an administrator to assign your intake year.'
+            : 'No matching students are available.'
+        }
+      />
+    )}
+  </>
+)}
+
       {page==='profile'&&<>
         <div className="page-heading"><div><p className="kicker">ACCOUNT SETTINGS</p><h1>My profile</h1><p className="muted">Manage your details and how you appear to classmates.</p></div></div>
         <div className="profile-grid"><div className="profile-cover"><div className="cover-gradient"/><div className="profile-identity"><div className="profile-avatar-wrap"><Avatar profile={me} size={94}/><button title="Upload profile photo" onClick={()=>onAvatar()}><Image size={17}/></button></div><h2>{me?.full_name}</h2><p>@{me?.username}</p><span className="profile-badge"><ShieldCheck size={15}/>{me?.role==='admin'?'Administrator':'Student'}</span></div></div><div className="surface-card profile-edit"><h2>Personal information</h2><p className="muted">Make changes to your public profile.</p><form onSubmit={e=>{e.preventDefault();const name=e.currentTarget.elements.fullname.value.trim();if(name)onProfileSave(name);}}><label>Full name<input key={me?.full_name} name="fullname" defaultValue={me?.full_name||''} required minLength={2} maxLength={80}/></label><label>Username<input value={me?.username?`@${me.username}`:''} disabled/><small>This is your login username. Ask an administrator if you need a new one.</small></label><button type="submit" className="btn btn-primary"><Check size={17}/> Save changes</button></form><div className="profile-signout"><button className="btn btn-outline" onClick={onSignOut}><LogOut size={17}/> Sign out</button></div></div></div>
@@ -233,7 +445,7 @@ function GroupSettingsModal({chat,profiles,memberRows,me,onClose,onUpdated}){
   const canManage=chat.created_by===me?.id||me?.role==='admin';
   const currentIds=new Set(memberRows.filter(m=>m.chat_id===chat.id).map(m=>m.user_id));
   const currentMembers=profiles.filter(p=>currentIds.has(p.id));
-  const available=profiles.filter(p=>!currentIds.has(p.id)&&`${p.full_name} ${p.username}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const available = profiles.filter(p =>p.role === 'student' &&!currentIds.has(p.id) &&`${p.full_name} ${p.username}`.toLowerCase().includes(query.trim().toLowerCase()));
   const changed=title.trim()!==chat.title||selected.length>0;
   const countAfter=currentIds.size+selected.length;
   async function save(e){
@@ -274,7 +486,7 @@ function GroupSettingsModal({chat,profiles,memberRows,me,onClose,onUpdated}){
 
 function GroupModal({profiles,user,onClose,onCreated}){
   const [title,setTitle]=useState(''),[members,setMembers]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
-  const possible=profiles.filter(p=>p.id!==user.id);
+  const possible = profiles.filter(p => p.role === 'student' && p.id !== user.id);
   async function submit(e){e.preventDefault();setBusy(true);setError('');const {data,error}=await supabase.rpc('create_conversation',{p_is_group:true,p_title:title.trim(),p_member_ids:members});setBusy(false);if(error)setError(error.message);else{onCreated(data);onClose();}}
   return <Modal title="Create a study group" subtitle="Choose students to start a private group conversation." onClose={onClose}><form className="modal-form" onSubmit={submit}><label>Group name<input value={title} onChange={e=>setTitle(e.target.value)} required minLength={2} maxLength={80} placeholder="e.g. Database Project Group"/></label><label>Invite classmates <small>({members.length} selected)</small></label><div className="select-students">{possible.map(p=><label className="select-person" key={p.id}><Avatar profile={p} size={34}/><span>{p.full_name}</span><input type="checkbox" checked={members.includes(p.id)} onChange={e=>setMembers(prev=>e.target.checked?[...prev,p.id]:prev.filter(id=>id!==p.id))}/></label>)}</div>{!possible.length&&<p className="muted">Ask other students to create their accounts first.</p>}{error&&<div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy||members.length<1}>{busy?<LoaderCircle className="spin" size={17}/>:<Users size={17}/>} Create group</button></div></form></Modal>;
 }
@@ -304,12 +516,15 @@ function Connected(){
   const onSend=async(chatId,body)=>{const {error}=await supabase.from('messages').insert({chat_id:chatId,sender_id:session.user.id,body});if(error)notify(error.message,'error');else refreshMessages();};
   const onFile=async(resource)=>{try{const url=await fileObjectURL(resource.file_id);const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';if(!(/^(image\/|application\/pdf)/.test(resource.mime_type||'')))link.download=resource.file_name||'download';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){notify(e.message,'error');}};
   const onProfileSave=async(name)=>{const {error}=await supabase.from('profiles').update({full_name:name}).eq('id',session.user.id);if(error)notify(error.message,'error');else{await refresh();notify('Profile updated!');}};
+  const onAssignIntake = async (studentId, year) => {if (profile?.role !== 'admin') {notify('Administrator access required', 'error');return;}try {
+  const { error } = await supabase.rpc('assign_student_intake',{p_student_id: studentId,p_intake_year: year});if (error) throw error;await refresh();notify('Student intake year updated successfully!');} catch (error) {notify(error.message, 'error');}};
+
   const afterUpload=async(kind)=>{await refresh();await refreshMessages();notify(kind==='avatar'?'Profile photo updated':kind==='resource'?'Resource shared with the class!':'Attachment sent!');};
   const onSignOut=async()=>{await supabase.auth.signOut();avatarUrls.clear();setPage('dashboard');};
   if(session===undefined)return <Loading label="Preparing your learning space..."/>;
   if(!session)return <Login onNotice={notify}/>;
   if(fetching)return <Loading label="Loading your workspace..."/>;
   if(!profile)return <div className="not-ready"><Logomark/><h2>Your profile is being prepared.</h2><p>Sign out and try again, or verify that you ran schema.sql in Supabase.</p><button className="btn btn-primary" onClick={onSignOut}>Sign out</button></div>;
-  return <><Workspace demo={false} page={page} setPage={setPage} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={session.user} me={profile} profiles={profiles} modules={modules} resources={resources} chats={chats} members={members} messages={messages} online={online} notice={notice} setNotice={setNotice} showToast={notify} setUpload={setUpload} setGroup={setGroup} setCreateModule={setCreateModule} setAiResource={setAiResource} onChatUser={onChatUser} onManageGroup={chat=>setGroupSettings(chat.id)} onEditSemester={module=>setEditSemester(module.id)} onSignOut={onSignOut} onFile={onFile} onSend={onSend} onProfileSave={onProfileSave} onAvatar={()=>setUpload({kind:'avatar'})}/>{upload&&<UploadModal upload={upload} modules={modules} onClose={()=>setUpload(null)} onSuccess={afterUpload}/>} {group&&<GroupModal profiles={profiles} user={session.user} onClose={()=>setGroup(false)} onCreated={async id=>{await refresh();setActiveChat(id);setPage('messages');notify('Study group created!');}}/>} {groupSettings&&chats.find(c=>c.id===groupSettings)?.is_group&&<GroupSettingsModal key={groupSettings} chat={chats.find(c=>c.id===groupSettings)} profiles={profiles} memberRows={members} me={profile} onClose={()=>setGroupSettings(null)} onUpdated={async()=>{await refresh();notify('Group updated successfully!');}}/>} {editSemester&&modules.find(m=>m.id===editSemester)&&<ModuleSemesterModal key={editSemester} module={modules.find(m=>m.id===editSemester)} onClose={()=>setEditSemester(null)} onUpdated={async()=>{await refresh();notify('Module semester updated!');}}/>} {createModule&&<ModuleModal initialSemester={createModule.semester} user={session.user} onClose={()=>setCreateModule(false)} onCreated={async()=>{await refresh();notify('Module created!');}}/>} {aiResource&&<AIModal resource={aiResource} onClose={()=>setAiResource(null)}/>}</>;
+  return <><Workspace onAssignIntake={onAssignIntake}  demo={false} page={page} setPage={setPage} selectedModule={selectedModule} setSelectedModule={setSelectedModule} activeChat={activeChat} setActiveChat={setActiveChat} user={session.user} me={profile} profiles={profiles} modules={modules} resources={resources} chats={chats} members={members} messages={messages} online={online} notice={notice} setNotice={setNotice} showToast={notify} setUpload={setUpload} setGroup={setGroup} setCreateModule={setCreateModule} setAiResource={setAiResource} onChatUser={onChatUser} onManageGroup={chat=>setGroupSettings(chat.id)} onEditSemester={module=>setEditSemester(module.id)} onSignOut={onSignOut} onFile={onFile} onSend={onSend} onProfileSave={onProfileSave} onAvatar={()=>setUpload({kind:'avatar'})}/>{upload&&<UploadModal upload={upload} modules={modules} onClose={()=>setUpload(null)} onSuccess={afterUpload}/>} {group&&<GroupModal profiles={profiles} user={session.user} onClose={()=>setGroup(false)} onCreated={async id=>{await refresh();setActiveChat(id);setPage('messages');notify('Study group created!');}}/>} {groupSettings&&chats.find(c=>c.id===groupSettings)?.is_group&&<GroupSettingsModal key={groupSettings} chat={chats.find(c=>c.id===groupSettings)} profiles={profiles} memberRows={members} me={profile} onClose={()=>setGroupSettings(null)} onUpdated={async()=>{await refresh();notify('Group updated successfully!');}}/>} {editSemester&&modules.find(m=>m.id===editSemester)&&<ModuleSemesterModal key={editSemester} module={modules.find(m=>m.id===editSemester)} onClose={()=>setEditSemester(null)} onUpdated={async()=>{await refresh();notify('Module semester updated!');}}/>} {createModule&&<ModuleModal initialSemester={createModule.semester} user={session.user} onClose={()=>setCreateModule(false)} onCreated={async()=>{await refresh();notify('Module created!');}}/>} {aiResource&&<AIModal resource={aiResource} onClose={()=>setAiResource(null)}/>}</>;
 }
 export default function App(){return ready?<Connected/>:<Preview/>;}
