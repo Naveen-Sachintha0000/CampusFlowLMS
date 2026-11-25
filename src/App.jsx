@@ -3,6 +3,11 @@ import {
   ArrowDownToLine, ArrowLeft, ArrowRight, BookOpen, BookOpenCheck, Check, ChevronRight, CloudUpload, FileImage, FileText, FolderOpen, GraduationCap, Image, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageCircle, MoreHorizontal, Paperclip, Plus, Search, Send, ShieldCheck, Sparkles, Users, Video, X, UserRound, LoaderCircle, Copy, CalendarDays, ExternalLink, BookMarked, ListChecks, TextSelect, CheckCircle2, AlertCircle, Settings2, UserPlus
 } from 'lucide-react';
 import {supabase, ready, api, fileObjectURL, API_URL, normalizeUsername, isValidUsername, usernameAuthEmail} from './supabase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 const samples = {
   profiles: [
@@ -105,7 +110,7 @@ function Login(){
   }catch(e){setError(/user already registered/i.test(e.message)?'That username is already taken. Choose another.':e.message);}finally{setBusy(false);}};
   return <div className="auth-layout"><div className="auth-art"><div className="auth-brand"><Logomark/><b>MORA-BPM<span></span></b></div><div className="auth-hero"><div className="eyebrow light"><span className="eyebrow-dot"/> YOUR SPACE TO LEARN TOGETHER</div><h1>Better learning<br/>happens <em>together.</em></h1><p>Everything you need to learn, connect, share and grow — all in one beautifully simple space.</p><div className="auth-features"><div><BookOpenCheck size={21}/> Shared course resources</div><div><MessageCircle size={21}/> Real-time study chats</div><div><Sparkles size={21}/> AI-powered study tools</div></div></div><div className="auth-decoration auth-dec-one"/><div className="auth-decoration auth-dec-two"/><div className="auth-bottom">Made for curious minds, built for your campus. ✦</div></div><div className="auth-panel"><div className="auth-mobile-brand"><Logomark small/><b>Mora-BPM<span>.</span></b></div><div className="auth-form"><div className="auth-kicker">WELCOME TO Mora - BPM</div><h2>{tab==='login'?'Welcome back 👋':'Let’s get started ✨'}</h2><p className="muted">{tab==='login'?'Sign in with your username and password.':'Create a student account without an email address.'}</p><div className="auth-tabs"><button className={tab==='login'?'selected':''} onClick={()=>{setTab('login');setError('');}}>Sign in</button><button className={tab==='signup'?'selected':''} onClick={()=>{setTab('signup');setError('');}}>Create account</button></div><form onSubmit={submit} className="stack-form">{tab==='signup'&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} required minLength={2} maxLength={80} placeholder="Your full name" autoComplete="name"/></label>}{tab === 'signup' && (
   <label>Intake year<select value={intakeYear} onChange={e => setIntakeYear(e.target.value)} required style={{width: '100%', minHeight: 48, padding: '12px',borderRadius: 10, border: '1px solid #d9deea', background: '#fff',fontSize: 14}}>
-      <option value="" className="input-wrap">Select your intake year</option> {intakeYears.map(year => (<option key={year} value={year}>{year} Intake</option>))}</select><small>Select the year you joined the university.</small>
+      <option value="">Select your intake year</option> {intakeYears.map(year => (<option key={year} value={year}>{year} Intake</option>))}</select><small>Select the year you joined the university.</small>
   </label>
 )}<label>Username<div className="input-wrap"><UserRound size={18}/><input type="text" required value={username} onChange={e=>setUsername(e.target.value)} minLength={3} maxLength={24} pattern="[A-Za-z][A-Za-z0-9_]{2,23}" title="Start with a letter; only letters, numbers and underscores" autoCapitalize="none" spellCheck={false} autoComplete="username" placeholder="e.g. ben.25"/></div>{tab==='signup'&&<small>3–24 characters; letters, numbers, underscores. Usernames ignore capitalization.</small>}</label><label>Password<div className="input-wrap"><LockKeyhole size={18}/><input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={tab==='login'?'current-password':'new-password'} placeholder="Enter your password"/></div></label>{error&&<p className="form-error">{error}</p>}<button className="btn btn-primary full" type="submit" disabled={busy}>{busy?<LoaderCircle size={18} className="spin"/>:null}{tab==='login'?'Sign in to your workspace':'Create your account'}<ArrowRight size={18}/></button></form><p className="auth-footer">No email required. Keep your password safe; account recovery is handled by an administrator. Your files stay in private Google Drive storage.</p></div></div></div>;
 }
@@ -494,7 +499,22 @@ function AIModal({resource,onClose}){
   const [task,setTask]=useState('summary'),[busy,setBusy]=useState(false),[answer,setAnswer]=useState(''),[error,setError]=useState('');
   const tasks=[{id:'summary',icon:BookMarked,title:'Summarize',desc:'Key concepts and takeaways'},{id:'extract',icon:TextSelect,title:'Extract text',desc:'Convert PDF or image to text'},{id:'quiz',icon:ListChecks,title:'Generate quiz',desc:'Revision questions with answers'}];
   const run=async()=>{setBusy(true);setError('');setAnswer('');try{const r=await api('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({resourceId:resource.id,mode:task})});setAnswer((await r.json()).result);}catch(e){setError(e.message);}finally{setBusy(false);}};
-  return <Modal title="AI Study Assistant ✨" subtitle={`Learn from “${resource.title}”`} onClose={onClose} wide><div className="ai-modal"><div className="ai-options">{tasks.map(t=><button key={t.id} className={`ai-option ${task===t.id?'ai-selected':''}`} onClick={()=>{setTask(t.id);setAnswer('');}}><t.icon size={23}/><b>{t.title}</b><small>{t.desc}</small></button>)}</div><div className="ai-privacy"><ShieldCheck size={18}/> Your file is sent to Google Gemini only when you click Generate. Google's AI service terms and data-use policies apply.</div><button className="btn btn-primary full" onClick={run} disabled={busy}>{busy?<LoaderCircle className="spin" size={17}/>:<Sparkles size={17}/>} {busy?'Analyzing your document...':'Generate with AI'}</button>{error&&<div className="form-error">{error}</div>}{answer&&<div className="ai-result"><div className="ai-result-head"><b><Sparkles size={17}/> AI study notes</b><button className="mini-action" onClick={()=>navigator.clipboard?.writeText(answer)} title="Copy answer"><Copy size={17}/></button></div><div className="ai-result-text">{answer}</div><small>AI output may contain mistakes. Check it against your source material.</small></div>}</div></Modal>;
+  return <Modal title="AI Study Assistant ✨" subtitle={`Learn from “${resource.title}”`} onClose={onClose} wide><div className="ai-modal"><div className="ai-options">{tasks.map(t=><button key={t.id} className={`ai-option ${task===t.id?'ai-selected':''}`} onClick={()=>{setTask(t.id);setAnswer('');}}><t.icon size={23}/><b>{t.title}</b><small>{t.desc}</small></button>)}</div><div className="ai-privacy"><ShieldCheck size={18}/> Your file is sent to Google Gemini only when you click Generate. Google's AI service terms and data-use policies apply.</div><button className="btn btn-primary full" onClick={run} disabled={busy}>{busy?<LoaderCircle className="spin" size={17}/>:<Sparkles size={17}/>} {busy?'Analyzing your document...':'Generate with AI'}</button>{error&&<div className="form-error">{error}</div>}{answer&&<div className="ai-result"><div className="ai-result-head"><b><Sparkles size={17}/> AI study notes</b><button className="mini-action" onClick={()=>navigator.clipboard?.writeText(answer)} title="Copy answer"><Copy size={17}/></button></div>
+<div className="ai-result-text">
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm, remarkMath]}
+    rehypePlugins={[
+      [rehypeKatex, {
+        throwOnError: false,
+        strict: 'ignore'
+      }]
+    ]}
+    skipHtml={true}
+  >
+    {answer}
+  </ReactMarkdown>
+</div>
+<small>AI output may contain mistakes. Check it against your source material.</small></div>}</div></Modal>;
 }
 
 function Connected(){
